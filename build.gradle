@@ -1,0 +1,14 @@
+plugins {
+    id 'java'
+}
+
+subprojects {
+
+    group 'com.nonpool'
+    version '1.0-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
+
+}
