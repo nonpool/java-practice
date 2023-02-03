@@ -3,6 +3,7 @@ package com.nonpool;
 import com.nonpool.pojo.ClassA;
 import com.nonpool.pojo.ClassB;
 import com.nonpool.pojo.GetterClass;
+import com.nonpool.pojo.NumberFieldClass;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -29,6 +30,15 @@ class ObjectToJsonApplicationTest {
         final String getterClassJsonStr = objectToJsonApplication.convert(getterClass);
 
         assertEquals("{\"firstName\":\"si\",\"lastName\":\"LI\",\"name\":\"LI·si\"}", getterClassJsonStr);
+
+    }
+
+    @Test
+    void convert_with_number_field() {
+        final NumberFieldClass numberFieldClass = new NumberFieldClass(1000L, 28);
+        final String getterClassJsonStr = objectToJsonApplication.convert(numberFieldClass);
+
+        assertEquals("{\"id\":1000,\"age\":28}", getterClassJsonStr);
 
     }
 
