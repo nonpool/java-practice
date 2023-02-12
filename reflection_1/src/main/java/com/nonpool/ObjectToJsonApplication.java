@@ -1,7 +1,16 @@
 package com.nonpool;
 
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class ObjectToJsonApplication {
 
@@ -9,29 +18,37 @@ public class ObjectToJsonApplication {
         // todo
         Class<?> anyClass = any.getClass();
         boolean includeNullField = isIncludeNullField(anyClass);
-        Method[] declaredMethods = anyClass.getDeclaredMethods();
 
-        StringBuilder stringBuilder = new StringBuilder("{");
-        for (Method method : declaredMethods) {
-            String methodName = method.getName();
-            String fieldName = methodName.substring(3);
-            String s1 = fieldName.substring(0, 1).toLowerCase();
-            String s2 = fieldName.substring(1);
-            fieldName = s1 + s2;
-            if (methodName.startsWith("get")) {
-                try {
-                    Object field = method.invoke(any);
-                    if (includeNullField  || field != null ) {
-                        String fieldValue = field == null ? null : ("\"" + field + "\"");
-                        stringBuilder.append(",\"").append(fieldName).append("\":").append(fieldValue);
-                    }
-                } catch (IllegalAccessException | InvocationTargetException e) {
-                    throw new RuntimeException(e);
+        HashMap<String, Integer> fieldsOrderMap = new HashMap<>();
+        Field[] declaredFields = anyClass.getDeclaredFields();
+        int fieldsLength = declaredFields.length;
+        for (int i = 0; i < fieldsLength; i++) {
+            fieldsOrderMap.put(declaredFields[i].getName(), i);
+        }
+
+        List<FieldsWithOrder> fieldsWithOrders = new ArrayList<>();
+        try {
+            PropertyDescriptor[] propertyDescriptors = Introspector.getBeanInfo(anyClass).getPropertyDescriptors();
+            for (PropertyDescriptor propertyDescriptor : propertyDescriptors) {
+                Object fieldValue = propertyDescriptor.getReadMethod().invoke(any);
+                String fieldName = propertyDescriptor.getName();
+                if (!fieldName.equals("class")) {
+                    FieldsWithOrder fieldsWithOrder = new FieldsWithOrder(fieldName, fieldValue, fieldsOrderMap.getOrDefault(fieldName, fieldsLength + 1));
+                    fieldsWithOrders.add(fieldsWithOrder);
                 }
             }
+
+            String collect = fieldsWithOrders
+                    .stream()
+                    .filter(s-> s.getFieldValue() !=null ||includeNullField==true )
+                    .sorted(Comparator.comparingInt(FieldsWithOrder::getOrder))
+                    .map(FieldsWithOrder::toString)
+                    .collect(Collectors.joining(","));
+
+            return "{"+collect+"}";
+        } catch (IntrospectionException | IllegalAccessException | InvocationTargetException e) {
+            throw new RuntimeException(e);
         }
-        stringBuilder.append("}");
-        return String.valueOf(stringBuilder).replaceFirst(",", "");
     }
 
     private static boolean isIncludeNullField(Class<?> anyClass) {
